@@ -13,7 +13,8 @@ public:
     void push_back(const T&);
     void pop_back();
     size_t size() const;
-    void resize(int newSize);
+    void resize(int);
+    void resize(int, T);
     bool empty() const;
     T back() const;
     void clear();
@@ -87,7 +88,6 @@ void Vector<T>::pop_back()
 {
     if (current_size != 0)
     {
-        elements[current_size] = nullptr;
         current_size--;
     }
 }
@@ -101,7 +101,33 @@ std::size_t Vector<T>::size() const
 template <class T>
 void Vector<T>::resize(int newSize)
 {
+    if (newSize > current_size)
+    {
+        this->resize(newSize, 0);
+    }
+    else
+    {
+        for (int i = 0; i < newSize - current_size; i++)
+        {
+            this->pop_back();
+        }
+    }
+}
 
+template <class T>
+void Vector<T>::resize(int newSize, T with)
+{
+    if (newSize < current_size)
+    {
+        this->resize(newSize);
+    }
+    else
+    {
+        for (unsigned int i = current_size; i < newSize; i++)
+        {
+            this->push_back(with);
+        }
+    }
 }
 
 template <class T>
@@ -151,8 +177,6 @@ T Vector<T>::operator[](const int index) const ///Needs errors
         return elements[index];
     }
 }
-
-
 
 template <class T>
 std::ostream& operator<<(std::ostream& out, const Vector<T>& vec)
