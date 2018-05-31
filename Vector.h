@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #ifndef VECTOR_H
 #define VECTOR_H
 
@@ -7,6 +8,7 @@ class Vector
 {
 public:
     Vector();
+    Vector(int _size, T& type);
     Vector(const Vector<T>& other);
     Vector& operator=(const Vector<T>& other);
 
@@ -19,9 +21,11 @@ public:
     T back() const;
     void clear();
     void increaseSize();
+    bool condition(bool(*condition)()) const;
+    void remove(int);
 
-    T operator[](const int) const;
-
+    T& operator[](const int) const;
+    T& operator[](const int);
 
     ~Vector();
 private:
@@ -39,6 +43,7 @@ private:
             elements[i] = other.elements[i];
         }
     }
+
 };
 
 template <class T>
@@ -47,6 +52,19 @@ Vector<T>::Vector()
     max_size = 127;
     elements = new T[max_size];
     current_size = 0;
+}
+
+template <class T>
+Vector<T>::Vector(int _size, T& type)
+{
+    assert(_size > 0);
+    current_size = _size;
+    max_size *= 2;
+    elements = new T[current_size];
+    for (unsigned i = 0; i < current_size; i++)
+    {
+        elements[i] = type;
+    }
 }
 
 template <class T>
@@ -143,11 +161,8 @@ bool Vector<T>::empty() const
 template <class T>
 T Vector<T>::back() const
 {
-    if (current_size == 0)
-    {
-        std::cerr << "The vector is empty" << std::endl;
-    }
-    return elements[current_size-1];
+    assert(this->size() >= 0);
+    return elements[current_size];
 }
 
 template <class T>
@@ -162,20 +177,27 @@ void Vector<T>::clear()
 template <class T>
 void Vector<T>::increaseSize()
 {
-    max_size = max_size*2 + 1;
+    T* new_elements = new T[max_size*2];
+    max_size *= 2;
+    for (int i = 0; i < current_size; i++)
+    {
+        new_elements[i] = elements[i];
+    }
+    delete[] elements;
+    elements = new_elements;
 }
 
 template <class T>
-T Vector<T>::operator[](const int index) const ///Needs errors
+T& Vector<T>::operator[](const int index) const
 {
-    if (index > current_size || index < 0)
-    {
-        std::cerr << "Index out of range of the vector size";
-    }
-    else
-    {
-        return elements[index];
-    }
+    return elements[index];
+}
+
+template <class T>
+T& Vector<T>::operator[](const int index)
+{
+    assert(index > 0 && index < this->size());
+    return elements[index];
 }
 
 template <class T>
@@ -186,6 +208,34 @@ std::ostream& operator<<(std::ostream& out, const Vector<T>& vec)
         out << vec[i] << " ";
     }
     return out;
+}
+
+template <class T>
+bool Vector<T>::condition(bool(*cond)()) const
+{
+    if (this->empty())
+    {
+        return false;
+    }
+    for (unsigned i = 0; i < current_size; i++)
+    {
+        if (cond(this[i]))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+template <class T>
+void Vector<T>::remove(int at)
+{
+    assert(at > 0 && at <= current_size);
+    for (unsigned i = at-1; i < current_size-1; i++)
+    {
+        elements[i] = elements[i+1];
+    }
+    pop_back();
 }
 
 
