@@ -7,6 +7,7 @@ template <class T>
 class Vector
 {
 public:
+
     Vector();
     Vector(int _size, T& type);
     Vector(const Vector<T>& other);
@@ -28,6 +29,9 @@ public:
     T& operator[](const int);
 
     ~Vector();
+
+    class ForwardIterator;
+
 private:
     std::size_t current_size;
     std::size_t max_size;
@@ -44,10 +48,31 @@ private:
         }
     }
 
+public:
+    class ForwardIterator
+    {
+    public:
+        ForwardIterator();
+        ForwardIterator(T*);
+        ForwardIterator(const ForwardIterator&);
+        ForwardIterator operator = (const ForwardIterator&);
+
+        bool operator == (const ForwardIterator&) const;
+        bool operator != (const ForwardIterator&) const;
+        T& operator * () const;
+        void operator ++ ();
+
+        void begin();
+        void end();
+
+    private:
+        T* it;
+    };
+
 };
 
 template <class T>
-Vector<T>::Vector()
+inline Vector<T>::Vector()
 {
     max_size = 127;
     elements = new T[max_size];
@@ -55,7 +80,7 @@ Vector<T>::Vector()
 }
 
 template <class T>
-Vector<T>::Vector(int _size, T& type)
+inline Vector<T>::Vector(int _size, T& type)
 {
     assert(_size > 0);
     current_size = _size;
@@ -68,13 +93,13 @@ Vector<T>::Vector(int _size, T& type)
 }
 
 template <class T>
-Vector<T>::Vector(const Vector<T>& other)
+inline Vector<T>::Vector(const Vector<T>& other)
 {
     copyMembers(other);
 }
 
 template <class T>
-Vector<T>& Vector<T>::operator = (const Vector<T>& other)
+inline Vector<T>& Vector<T>::operator = (const Vector<T>& other)
 {
     if (this != &other)
     {
@@ -85,13 +110,13 @@ Vector<T>& Vector<T>::operator = (const Vector<T>& other)
 }
 
 template <class T>
-Vector<T>::~Vector()
+inline Vector<T>::~Vector()
 {
     delete[] elements;
 }
 
 template <class T>
-void Vector<T>::push_back(const T& x)
+inline void Vector<T>::push_back(const T& x)
 {
     if (current_size == max_size)
     {
@@ -102,7 +127,7 @@ void Vector<T>::push_back(const T& x)
 }
 
 template <class T>
-void Vector<T>::pop_back()
+inline void Vector<T>::pop_back()
 {
     if (current_size != 0)
     {
@@ -111,17 +136,17 @@ void Vector<T>::pop_back()
 }
 
 template <class T>
-std::size_t Vector<T>::size() const
+inline std::size_t Vector<T>::size() const
 {
     return current_size;
 }
 
 template <class T>
-void Vector<T>::resize(int newSize)
+inline void Vector<T>::resize(int newSize)
 {
     if (newSize > current_size)
     {
-        this->resize(newSize, 0);
+        this->resize(newSize, T());
     }
     else
     {
@@ -133,7 +158,7 @@ void Vector<T>::resize(int newSize)
 }
 
 template <class T>
-void Vector<T>::resize(int newSize, T with)
+inline void Vector<T>::resize(int newSize, T with)
 {
     if (newSize < current_size)
     {
@@ -149,7 +174,7 @@ void Vector<T>::resize(int newSize, T with)
 }
 
 template <class T>
-bool Vector<T>::empty() const
+inline bool Vector<T>::empty() const
 {
     if (current_size == 0)
     {
@@ -159,14 +184,14 @@ bool Vector<T>::empty() const
 }
 
 template <class T>
-T Vector<T>::back() const
+inline T Vector<T>::back() const
 {
     assert(this->size() >= 0);
     return elements[current_size];
 }
 
 template <class T>
-void Vector<T>::clear()
+inline void Vector<T>::clear()
 {
     delete[] elements;
     max_size = 127;
@@ -175,7 +200,7 @@ void Vector<T>::clear()
 }
 
 template <class T>
-void Vector<T>::increaseSize()
+inline void Vector<T>::increaseSize()
 {
     T* new_elements = new T[max_size*2];
     max_size *= 2;
@@ -188,20 +213,20 @@ void Vector<T>::increaseSize()
 }
 
 template <class T>
-T& Vector<T>::operator[](const int index) const
+inline T& Vector<T>::operator[](const int index) const
 {
     return elements[index];
 }
 
 template <class T>
-T& Vector<T>::operator[](const int index)
+inline T& Vector<T>::operator[](const int index)
 {
     assert(index > 0 && index < this->size());
     return elements[index];
 }
 
 template <class T>
-std::ostream& operator<<(std::ostream& out, const Vector<T>& vec)
+inline std::ostream& operator<<(std::ostream& out, const Vector<T>& vec)
 {
     for (unsigned int i = 0; i < vec.size(); i++)
     {
@@ -211,7 +236,7 @@ std::ostream& operator<<(std::ostream& out, const Vector<T>& vec)
 }
 
 template <class T>
-bool Vector<T>::condition(bool(*cond)()) const
+inline bool Vector<T>::condition(bool(*cond)()) const
 {
     if (this->empty())
     {
@@ -228,7 +253,7 @@ bool Vector<T>::condition(bool(*cond)()) const
 }
 
 template <class T>
-void Vector<T>::remove(int at)
+inline void Vector<T>::remove(int at)
 {
     assert(at > 0 && at <= current_size);
     for (unsigned i = at-1; i < current_size-1; i++)
@@ -238,5 +263,54 @@ void Vector<T>::remove(int at)
     pop_back();
 }
 
+template <class T>
+inline typename Vector<T>::ForwardIterator::ForwardIerator()
+{
+    it = elements;
+}
+
+template <class T>
+inline typename Vector<T>::ForwardIterator::ForwardIterator(T* _it)
+{
+    assert(it >= elements && it < elements + size());
+    it = _it;
+}
+
+template <class T>
+inline bool Vector<T>::ForwardIterator::operator == (const ForwardIterator& other) const
+{
+    return it == other;
+}
+
+template <class T>
+inline bool Vector<T>::ForwardIterator::operator != (const ForwardIterator& other) const
+{
+    return it != other;
+}
+
+template <class T>
+inline T& Vector<T>::ForwardIterator::operator *() const
+{
+    assert(it != nullptr);
+    return *it;
+}
+
+template <class T>
+inline void Vector<T>::ForwardIterator::operator ++()
+{
+    it++;
+}
+
+template <class T>
+inline void Vector<T>::ForwardIterator::begin()
+{
+    it = elements;
+}
+
+template <class T>
+inline void Vector<T>::ForwardIterator::end()
+{
+    it = elements + size();
+}
 
 #endif // VECTOR_H
