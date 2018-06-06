@@ -9,7 +9,7 @@ class Vector
 public:
 
     Vector();
-    Vector(int _size, T& type);
+    Vector(int _size, T type);
     Vector(const Vector<T>& other);
     Vector& operator=(const Vector<T>& other);
 
@@ -22,8 +22,10 @@ public:
     T back() const;
     void clear();
     void increaseSize();
-    bool condition(bool(*condition)()) const;
+    bool condition(bool(*condition)(T&)) const;
     void remove(int);
+    void shrink_to_fit();
+    int capacity() const;
 
     T& operator[](const int) const;
     T& operator[](const int);
@@ -37,7 +39,7 @@ public:
     ///Time - O(1)
     ForwardIterator fbegin()
     {
-        return elements;
+        return ForwardIterator(elements);
     }
 
     ///Returns a Forward Iterator to
@@ -45,7 +47,7 @@ public:
     ///Time - O(1)
     ForwardIterator fend()
     {
-        return elements+size();
+        return ForwardIterator(elements+size());
     }
 
     class RandomAccessIterator;
@@ -55,7 +57,7 @@ public:
     ///Time - O(1)
     RandomAccessIterator begin()
     {
-        return elements;
+        return RandomAccessIterator(elements);
     }
 
     ///Returns a RandomAccessIterator to
@@ -63,7 +65,7 @@ public:
     ///Time - O(1)
     RandomAccessIterator end()
     {
-        return elements+size();
+        return RandomAccessIterator(elements+size());
     }
 
 
@@ -132,8 +134,8 @@ public:
         RandomAccessIterator operator + (int);
         RandomAccessIterator operator - (int);
 
-        RandomAccessIterator operator += (int);
-        RandomAccessIterator operator -= (int);
+        RandomAccessIterator& operator += (int);
+        RandomAccessIterator& operator -= (int);
 
         ~RandomAccessIterator();
 
@@ -158,7 +160,7 @@ inline Vector<T>::Vector()
 ///_size - The size of the vector
 ///type - All elements in the vector have this value
 template <class T>
-inline Vector<T>::Vector(int _size, T& type)
+inline Vector<T>::Vector(int _size, T type)
 {
     assert(_size > 0);
     current_size = _size;
@@ -242,16 +244,13 @@ template <class T>
 inline void Vector<T>::resize(int newSize)
 {
     assert(newSize >= 0);
-    if (newSize > current_size)
+    if (newSize > (int)current_size)
     {
         this->resize(newSize, T());
     }
     else
     {
-        for (int i = 0; i < current_size - newSize; i++)
-        {
-            this->pop_back();
-        }
+        current_size = newSize;
     }
 }
 
@@ -264,13 +263,13 @@ template <class T>
 inline void Vector<T>::resize(int newSize, T with)
 {
     assert(newSize >= 0);
-    if (newSize < current_size)
+    if (newSize < (int)current_size)
     {
         this->resize(newSize);
     }
     else
     {
-        for (unsigned int i = current_size; i < newSize; i++)
+        for (unsigned int i = current_size; i < (unsigned)newSize; i++)
         {
             this->push_back(with);
         }
@@ -328,7 +327,7 @@ inline void Vector<T>::increaseSize()
     {
         new_elements[i] = elements[i];
     }
-    delete[] elements;
+
     elements = new_elements;
 }
 
@@ -348,7 +347,7 @@ inline T& Vector<T>::operator[](const int index) const
 template <class T>
 inline T& Vector<T>::operator[](const int index)
 {
-    assert(index > 0 && index < (int)this->size());
+    assert(index >= 0 && index < (int)this->size());
     return elements[index];
 }
 
@@ -370,7 +369,7 @@ inline std::ostream& operator<<(std::ostream& out, const Vector<T>& vec)
 ///false otherwise
 ///Time - O(n)
 template <class T>
-inline bool Vector<T>::condition(bool(*cond)()) const
+inline bool Vector<T>::condition(bool(*cond)(T& x)) const
 {
     if (this->empty())
     {
@@ -378,7 +377,7 @@ inline bool Vector<T>::condition(bool(*cond)()) const
     }
     for (unsigned i = 0; i < current_size; i++)
     {
-        if (cond(this[i]))
+        if (cond(elements[i]))
         {
             return true;
         }
@@ -392,12 +391,36 @@ inline bool Vector<T>::condition(bool(*cond)()) const
 template <class T>
 inline void Vector<T>::remove(int at)
 {
-    assert(at > 0 && at <= (int)current_size);
-    for (unsigned i = at-1; i < current_size-1; i++)
+    assert(at >= 0 && at < (int)current_size);
+    for (unsigned i = at; i < current_size-1; i++)
     {
         elements[i] = elements[i+1];
     }
     pop_back();
+}
+
+///Shrinks the maximum size to that of
+///the current size and copies all the
+///elements of the vector to our new array
+///Time - O(n)
+template <class T>
+inline void Vector<T>::shrink_to_fit()
+{
+    T* new_elems = new T(current_size);
+    for (unsigned i = 0; i < current_size; i++)
+    {
+        new_elems[i] = elements[i];
+    }
+    max_size = current_size;
+    elements = new_elems;
+}
+
+///Returns the current capacity of "elements"
+///Time O(1)
+template <class T>
+inline int Vector<T>::capacity() const
+{
+    return (int)max_size;
 }
 
 ///Default Constructor for Forward Iterator
@@ -484,11 +507,10 @@ inline typename Vector<T>::ForwardIterator& Vector<T>::ForwardIterator::operator
 ///right of our arrays
 ///Time - O(1)
 template <class T>
-inline typename Vector<T>::ForwardIterator Vector<T>::ForwardIterator::operator ++(int x)
+inline typename Vector<T>::ForwardIterator Vector<T>::ForwardIterator::operator ++(int)
 {
-    ForwardIterator f = *this;
-    f++;
-    return f;
+    it++;
+    return ForwardIterator(it);
 }
 
 ///Destructor
@@ -496,7 +518,7 @@ inline typename Vector<T>::ForwardIterator Vector<T>::ForwardIterator::operator 
 template <class T>
 inline Vector<T>::ForwardIterator::~ForwardIterator()
 {
-    delete it;
+    it = nullptr;
 }
 
 ///Default Constructor
@@ -508,18 +530,27 @@ Vector<T>::RandomAccessIterator::RandomAccessIterator()
     it = elements;
 }
 
+///Constructor with arguments
+///Creates a pointer by a given one
+///Time - O(1)
 template <class T>
 Vector<T>::RandomAccessIterator::RandomAccessIterator(T* _it)
 {
     it = _it;
 }
 
+///Copy Constructor
+///Copies a pointer to our pointer
+///Time - O(1)
 template <class T>
 Vector<T>::RandomAccessIterator::RandomAccessIterator(const RandomAccessIterator& other)
 {
     it = other.it;
 }
 
+///Operator =
+///Assigns a new pointer to our Iterator
+///Time - O(1)
 template <class T>
 typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator::operator =(const RandomAccessIterator& other)
 {
@@ -527,18 +558,29 @@ typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator::opera
     return *this;
 }
 
+///Checks if two Random Access Iterators are equal
+///returns true if they are
+///false otherwise
+///Time - O(1)
 template <class T>
 inline bool Vector<T>::RandomAccessIterator::operator == (const RandomAccessIterator& other) const
 {
     return it == other.it;
 }
 
+///Checks if two Random Access Iterators are different
+///returns true if they are
+///false otherwise
+///Time - O(1)
 template <class T>
 inline bool Vector<T>::RandomAccessIterator::operator != (const RandomAccessIterator& other) const
 {
     return it != other.it;
 }
 
+///Derefårencing of a Random Access Iterator
+///returns the value that the Random Access Iterator is pointing to
+///Time - O(1)
 template <class T>
 inline T& Vector<T>::RandomAccessIterator::operator *() const
 {
@@ -546,6 +588,10 @@ inline T& Vector<T>::RandomAccessIterator::operator *() const
     return *it;
 }
 
+///Prefix Operator
+///Moves the Random Access Iterator
+///to the 'right' of the array
+///Time - O(1)
 template <class T>
 inline typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator::operator ++()
 {
@@ -556,41 +602,62 @@ inline typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator
 template <class T>
 inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator ++(int x)
 {
-    RandomAccessIterator r = *this;
-    r+=1;
-    return r;
+    it++;
+    return RandomAccessIterator(it);
 }
 
+///Destructor
+///Deletes our pointer
 template <class T>
 inline Vector<T>::RandomAccessIterator::~RandomAccessIterator()
 {
-    delete it;
+    it = nullptr;
 }
 
+///Checks if the first Random Access Iterator is bigger than the second
+///returns true if it is
+///false otherwise
+///Time - O(1)
 template <class T>
 inline bool Vector<T>::RandomAccessIterator::operator > (const RandomAccessIterator& other) const
 {
     return it > other.it;
 }
 
+///Checks if the first Random Access Iterator is smaller than the second
+///returns true if it is
+///false otherwise
+///Time - O(1)
 template <class T>
 inline bool Vector<T>::RandomAccessIterator::operator < (const RandomAccessIterator& other) const
 {
     return it < other.it;
 }
 
+///Checks if the first Random Access Iterator is bigger or equal than the second
+///returns true if it is
+///false otherwise
+///Time - O(1)
 template <class T>
 inline bool Vector<T>::RandomAccessIterator::operator >= (const RandomAccessIterator& other) const
 {
     return it >= other.it;
 }
 
+///Checks if the first Random Access Iterator is smaller or equal than the second
+///returns true if it is
+///false otherwise
+///Time - O(1)
 template <class T>
 inline bool Vector<T>::RandomAccessIterator::operator <= (const RandomAccessIterator& other) const
 {
     return it <= other.it;
 }
 
+///Prefix Operator
+///Moves the Random Access Iterator
+///to the 'left' of the array
+///Time - O(1)
 template <class T>
 inline typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator::operator --()
 {
@@ -598,40 +665,59 @@ inline typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator
     return *this;
 }
 
+///Postfix Operator
+///Moves the Random Access Iterator
+///to the 'left' of the array
+///Time - O(1)
 template <class T>
-inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator --(int x) ///
+inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator --(int x)
 {
-    RandomAccessIterator r = *this;
-    r--;
-    return r;
+    it--;
+    return RandomAccessIterator(it);
 }
 
+///Operator + for a pointer and a number
+///Moves the iterator "x" times to the 'right'
+///of the array
+///Time - O(1)
 template <class T>
 inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator + (int x)
 {
     it += x;
-    return it;
+    return RandomAccessIterator(it);
 }
 
+///Operator - for a pointer and a number
+///Moves the iterator "x" times to the 'left'
+///of the array
+///Time - O(1)
 template <class T>
 inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator - (int x)
 {
     it -= x;
-    return it;
+    return RandomAccessIterator(it);
 }
 
+///Operator += for a pointer and a number
+///Moves the iterator "x" times to the 'right'
+///of the array
+///Time - O(1)
 template <class T>
-inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator += (int x)
+inline typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator::operator += (int x)
 {
     it += x;
-    return it;
+    return *this;
 }
 
+///Operator -= for a pointer and a number
+///Moves the iterator "x" times to the 'left'
+///of the array
+///Time - O(1)
 template <class T>
-inline typename Vector<T>::RandomAccessIterator Vector<T>::RandomAccessIterator::operator -= (int x)
+inline typename Vector<T>::RandomAccessIterator& Vector<T>::RandomAccessIterator::operator -= (int x)
 {
     it -= x;
-    return it;
+    return *this;
 }
 
 #endif // VECTOR_H
